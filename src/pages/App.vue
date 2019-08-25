@@ -22,124 +22,25 @@
     import WeatherNow from './weather/WeatherNow.vue';
     import DailyForecast from './weather/DailyForecast.vue';
     import AirNow from './weather/AirNow.vue';
+    import {WeatherData} from './weather/MockApi';
+    import {dayOfWeek} from './weather/Utils';
+    import moment from 'moment';
 
     export default {
         name: "app",
         components: {WeatherNow, DailyForecast, AirNow},
         data() {
             return {
-                nowCond: {
-                    location: '西安',
-                    tmp: '30',
-                    condTxt: '多云',
-                    condCode: '101',
-                    aqi: '85',
-                    qlty: '良'
-                },
-                nowOthers: [
-                    {
-                        icon: 'ic_weather_wind.png',
-                        title: '东南风',
-                        value: '1级'
-                    },
-                    {
-                        icon: 'ic_weather_wind.png',
-                        title: '东南风',
-                        value: '1级'
-                    }, {
-                        icon: 'ic_weather_wind.png',
-                        title: '东南风',
-                        value: '1级'
-                    }],
-                forecasts: [
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期一',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    },
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期二',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    },
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期三',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    },
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期四',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    },
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期五',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    }, {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期六',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    },
-                    {
-                        "condCode": "101",
-                        "condTxt": "多云",
-                        "date": "08/25",
-                        "dayOfWeek": '星期七',
-                        "tmpMax": '32',
-                        "tmpMin": '23'
-                    }
-                ],
-                airs: [
-                    {
-                        title: 'CO',
-                        value: '63',
-                        unit: 'ug/m³'
-                    },
-                    {
-                        title: 'CO<sub>2</sub>',
-                        value: '63',
-                        unit: 'ug/m³'
-                    },
-                    {
-                        title: 'PM<sub>10</sub>',
-                        value: '102',
-                        unit: 'ug/m³'
-                    },
-                    {
-                        title: 'PM<sub>2.5</sub>',
-                        value: '63',
-                        unit: 'ug/m³'
-                    }]
+                nowCond: {},
+                nowOthers: [],
+                forecasts: [],
+                airs: []
             }
         },
 
 
         mounted() {
-            this.fetchData()
-                .then(resp => {
-                    console.log(resp);
-                }).catch(error => {
-
-            });
+            this.initData()
 
         },
         methods: {
@@ -154,9 +55,93 @@
                 };
                 return fetch('http://console.qa.roomis.com.cn/api/v2/weather', options)
                     .then(response => response.json())
+            },
+
+            today: function (date) {
+                return moment(date).isSame(moment().format('YYYY-MM-DD'))
+            },
+
+            day: function () {
+                let nowHour = moment().hour();
+                return nowHour > 6 && nowHour < 18
+            },
+
+            initData: function () {
+
+                let weather = WeatherData.payload.normalWeatherDto.HeWeather6[0];
+                let air = WeatherData.payload.airDto.HeWeather6[0];
+                this.nowCond = {
+                    location: weather.basic.location,
+                    tmp: weather.now.tmp,
+                    condTxt: weather.now.cond_txt,
+                    condCode: weather.now.cond_code,
+                    aqi: air.air_now_city.aqi,
+                    qlty: air.air_now_city.qlty
+                };
+
+                let uv = '';
+
+                if (weather.daily_forecast) {
+                    weather.daily_forecast.forEach((item) => {
+                        let date = moment(item.date);
+                        let dateFormat = date.format('MM/DD');
+                        let isToDay = this.today(date);
+
+                        console.log(date.isoWeekday());
+                        let day = isToDay ? dayOfWeek[0] : dayOfWeek[date.isoWeekday() - 1];
+
+                        if (isToDay) {
+                            uv = item.uv_index
+                        }
+                        this.forecasts.push({
+                            date: dateFormat,
+                            dayOfWeek: day,
+                            tmpMax: item.tmp_max,
+                            tmpMin: item.tmp_min,
+                            condCode: this.day ? item.cond_code_d : item.cond_code_n,
+                            condTxt: this.day ? item.cond_txt_d : item.cond_txt_n
+                        })
+                    });
+                }
+                this.nowOthers.push({
+                    icon: 'ic_weather_wind.png',
+                    title: weather.now.wind_dir + '风',
+                    value: weather.now.wind_sc + '级'
+                });
+                this.nowOthers.push({
+                    icon: 'ic_weather_humidity.png',
+                    title: '湿度',
+                    value: weather.now.hum + '%'
+                });
+                this.nowOthers.push({
+                    icon: 'ic_weather_small_sun.png',
+                    title: 'UV',
+                    value: uv
+                });
+
+                this.airs.push({
+                    title: 'CO',
+                    value: air.air_now_city.co,
+                    unit: 'ug/m³'
+                });
+                this.airs.push({
+                    title: 'SO<sub>2</sub>',
+                    value: air.air_now_city.so2,
+                    unit: 'ug/m³'
+                });
+                this.airs.push({
+                    title: 'PM<sub>10</sub>',
+                    value: air.air_now_city.pm10,
+                    unit: 'ug/m³'
+                });
+                this.airs.push({
+                    title: 'PM<sub>25</sub>',
+                    value: air.air_now_city.pm25,
+                    unit: 'ug/m³'
+                })
+
             }
         }
-
 
     }
 </script>
