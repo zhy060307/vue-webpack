@@ -105,7 +105,7 @@
                 }
                 this.nowOthers.push({
                     icon: 'ic_weather_wind.png',
-                    title: weather.now.wind_dir + '风',
+                    title: weather.now.wind_dir,
                     value: weather.now.wind_sc + '级'
                 });
                 this.nowOthers.push({
