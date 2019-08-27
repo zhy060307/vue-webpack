@@ -9,7 +9,7 @@ module.exports = {
     entry: './src/index.js',
     output: {
         path: path.resolve(__dirname, './dist'),
-        publicPath: '/dist/',
+        publicPath: '/',//浏览器访问的路径
         filename: '[name].[hash].js',//每次生成的文件名称不一致，避免缓存
     },
 
